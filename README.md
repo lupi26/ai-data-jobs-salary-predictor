@@ -89,12 +89,44 @@ Here's what the script actually does:
 ![Feature Importance](output_plots/feature_importance.png)
 ![Actual vs. Predicted Salaries](output_plots/real_vs_predicted.png)
 
+---
+
+> **Update:** 
+
+# SHAP Analysis: Model Interpretability
+
+## Waterfall Plot (Single Prediction)
+
+![Waterfall Plot](output_plots/shap_waterfall.png)
+
+This plot explains **one individual prediction**, breaking down how the model moved from the baseline (average prediction, `E[f(X)] = 96,546`) to the final predicted value (~`62,203`).
+
+- **`experience_years` = 0** is by far the strongest driver, pulling the prediction down by **-31,570.93**, which makes sense since this employee has no experience.
+- **`bonus_usd`** and **`country_UAE = True`** also reduce the prediction (-8,011 and -6,858 respectively).
+- Features like **`country_India = False`**, **`country_Brazil = False`**, and **`job_role_Data Analyst = False`** push the prediction *up*, since *not* belonging to lower-paying categories works in the employee's favor.
+- The remaining 64 features contribute only marginally (-478.49 combined), confirming that a handful of variables dominate this prediction.
+
+## Summary Plot (Global Feature Importance)
+
+![Summary Plot](output_plots/shap_summary.png)
+
+This plot aggregates SHAP values across the whole dataset, showing both **importance** (vertical position) and **direction of effect** (color = feature value, position = impact on prediction).
+
+- **`experience_years`** and **`bonus_usd`** are the most influential features overall, with wide SHAP value ranges. Higher values (pink) consistently push predictions up, while lower values (blue) push them down, an intuitive, monotonic relationship.
+- **`country_India`** and **`country_Brazil`** show a clear negative effect: when `True` (pink), they strongly *decrease* the predicted salary, indicating a location-based salary gap in the model.
+- **`country_USA`** shows the opposite pattern: being `True` boosts predictions significantly.
+- **`job_role_Data Analyst`** is associated with lower predictions, while **`job_role_Machine Learning Engineer`** and **`job_role_Research Scientist`** trend positive.
+- Categorical (one-hot) features naturally show two clusters (True/False) rather than a continuous gradient, unlike continuous numeric features (`experience_years`, `bonus_usd`, `employee_satisfaction`).
+
+## Takeaway
+
+The model's predictions are primarily driven by experience and bonus, with a secondary but noticeable influence from country and job role, highlighting potential geographic/role-based disparities worth further investigation.
+
 ## Possible future improvements
 
 - Hyperparameter tuning (e.g. `RandomizedSearchCV`, Optuna)
 - More sophisticated handling of high-cardinality categorical variables (e.g. target encoding)
 - A dedicated holdout split for final model validation
-- Model interpretability with SHAP
 
 ## License
 

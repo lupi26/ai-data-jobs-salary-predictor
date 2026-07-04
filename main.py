@@ -7,6 +7,7 @@ import seaborn as sns
 from sklearn.model_selection import KFold, cross_validate, cross_val_predict
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
+import shap
 
 # Cartella di output per i grafici
 OUTPUT_DIR = "output_plots"
@@ -70,9 +71,7 @@ def main():
     print(missing_pct)
     print(f"\nRighe duplicate totali: {df.duplicated().sum()}\n")
 
-    # Gestione dei valori mancanti: rimuoviamo le righe con NaN
-    # (se una colonna avesse troppi missing, andrebbe valutata un'imputazione
-    # o l'eliminazione della colonna stessa invece della riga)
+    # Gestione dei valori mancanti
     righe_iniziali = len(df)
     df = df.dropna()
     print(f"Righe rimosse per valori mancanti: {righe_iniziali - len(df)}")
@@ -215,11 +214,41 @@ def main():
     print(f"R² : {xgb_r2_mean:.4f}")
     print("=" * 50)
 
+   # ==========================================
+    # 5. INTERPRETABILITÀ CON SHAP
     # ==========================================
-    # 5. CONTROLLO FEATURE IMPORTANCE (leakage check)
+    print("\nAddestramento XGBoost su tutto il dataset prima di usare SHAP...")
+    xgb_model.fit(X, y)  
+
+    print("Calcolo dei valori SHAP per l'interpretabilità del modello...")
+
+    explainer = shap.TreeExplainer(xgb_model)
+    
+    shap_values = explainer(X)
+
+    plt.figure(figsize=(10, 8))
+    shap.plots.beeswarm(shap_values, max_display=15, show=False)
+    plt.title("Impatto delle Feature (SHAP Summary Plot)", fontsize=14, fontweight="bold")
+    
+    shap_plot_path = os.path.join(OUTPUT_DIR, "shap_summary.png")
+    plt.savefig(shap_plot_path, dpi=300, bbox_inches="tight")
+    print(f"Grafico SHAP salvato in: {shap_plot_path}")
+    plt.show()
+    plt.close()
+    
+    # Visualizzo come il modello decide per la prima riga del dataset
+    plt.figure(figsize=(10, 6))
+    shap.plots.waterfall(shap_values[0], max_display=10, show=False)
+    plt.title("Spiegazione SHAP per la prima riga del dataset", fontsize=12)
+    
+    waterfall_path = os.path.join(OUTPUT_DIR, "shap_waterfall.png")
+    plt.savefig(waterfall_path, dpi=300, bbox_inches="tight")
+    plt.show()
+    plt.close()
+
     # ==========================================
-    print("\nAddestramento XGBoost su tutto il dataset per il controllo delle feature importance...")
-    xgb_model.fit(X, y)
+    # 6. CONTROLLO FEATURE IMPORTANCE (leakage check)
+    # ==========================================
     importances = pd.Series(
         xgb_model.feature_importances_,
         index=X.columns
@@ -252,11 +281,11 @@ def main():
     plt.close()
 
     # ==========================================
-    # 6. GRAFICO: VALORI REALI VS PREVISIONI
+    # 7. GRAFICO: VALORI REALI VS PREVISIONI
     # ==========================================
     print("\nCalcolo delle previsioni per la visualizzazione...")
 
-    # Predizioni ottenute tramite cross-validation
+
     xgb_pred_cv = cross_val_predict(
         xgb_model,
         X,
@@ -274,7 +303,7 @@ def main():
         edgecolor=None
     )
 
-    # Linea di riferimento (predizione perfetta)
+
     min_val = min(y.min(), xgb_pred_cv.min())
     max_val = max(y.max(), xgb_pred_cv.max())
 
